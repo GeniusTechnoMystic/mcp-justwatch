@@ -2,7 +2,13 @@
 
 from unittest.mock import patch
 
+import mcp_justwatch.server as server_module
 from mcp_justwatch.server import (
+    DEFAULT_HOST,
+    DEFAULT_PORT,
+    DEFAULT_TRANSPORT,
+    build_runtime_settings,
+    configure_logging,
     search_content,
     get_details,
     get_offers_for_countries,
@@ -195,7 +201,7 @@ class TestSearchContent:
         )
 
         with patch("mcp_justwatch.server.justwatch.search", return_value=[mock_entry]):
-            result = search_content.fn(query="The Matrix", country="US")
+            result = search_content(query="The Matrix", country="US")
 
         assert "The Matrix" in result
         assert "1999" in result
@@ -204,7 +210,7 @@ class TestSearchContent:
     def test_search_content_no_results(self):
         """Test search with no results."""
         with patch("mcp_justwatch.server.justwatch.search", return_value=[]):
-            result = search_content.fn(query="NonexistentMovie12345", country="US")
+            result = search_content(query="NonexistentMovie12345", country="US")
 
         assert "No results found" in result
 
@@ -215,7 +221,7 @@ class TestSearchContent:
         with patch(
             "mcp_justwatch.server.justwatch.search", return_value=[mock_entry]
         ) as mock_search:
-            result = search_content.fn(
+            result = search_content(
                 query="Test",
                 country="GB",
                 language="en",
@@ -235,7 +241,7 @@ class TestSearchContent:
         with patch(
             "mcp_justwatch.server.justwatch.search", return_value=[mock_entry]
         ) as mock_search:
-            search_content.fn(query="Test", country="us")
+            search_content(query="Test", country="us")
 
         # Check that the country was uppercased
         call_args = mock_search.call_args
@@ -248,7 +254,7 @@ class TestSearchContent:
         with patch(
             "mcp_justwatch.server.justwatch.search", return_value=[mock_entry]
         ) as mock_search:
-            search_content.fn(query="Test", language="EN")
+            search_content(query="Test", language="EN")
 
         # Check that the language was lowercased
         call_args = mock_search.call_args
@@ -262,23 +268,72 @@ class TestSearchContent:
             "mcp_justwatch.server.justwatch.search", return_value=[mock_entry]
         ) as mock_search:
             # Test upper bound
-            search_content.fn(query="Test", count=100)
+            search_content(query="Test", count=100)
             assert mock_search.call_args.kwargs["count"] == 20
 
         with patch(
             "mcp_justwatch.server.justwatch.search", return_value=[mock_entry]
         ) as mock_search:
             # Test lower bound
-            search_content.fn(query="Test", count=0)
+            search_content(query="Test", count=0)
             assert mock_search.call_args.kwargs["count"] == 1
 
     def test_search_exception_handling(self):
         """Test exception handling in search."""
         with patch("mcp_justwatch.server.justwatch.search", side_effect=Exception("API Error")):
-            result = search_content.fn(query="Test")
+            result = search_content(query="Test")
 
         assert "Error" in result
         assert "API Error" in result
+
+
+class TestRuntimeConfiguration:
+    """Tests for runtime configuration helpers."""
+
+    def test_build_runtime_settings_defaults_to_stdio(self):
+        settings = build_runtime_settings({})
+
+        assert settings.transport == DEFAULT_TRANSPORT
+        assert settings.host == DEFAULT_HOST
+        assert settings.port == DEFAULT_PORT
+
+    def test_build_runtime_settings_reads_http_environment(self):
+        settings = build_runtime_settings(
+            {
+                "MCP_JUSTWATCH_TRANSPORT": "http",
+                "MCP_JUSTWATCH_HOST": "127.0.0.1",
+                "MCP_JUSTWATCH_PORT": "9000",
+            }
+        )
+
+        assert settings.transport == "http"
+        assert settings.host == "127.0.0.1"
+        assert settings.port == 9000
+
+    def test_build_runtime_settings_rejects_invalid_port(self):
+        try:
+            build_runtime_settings({"MCP_JUSTWATCH_PORT": "invalid"})
+        except ValueError as exc:
+            assert "MCP_JUSTWATCH_PORT" in str(exc)
+        else:
+            raise AssertionError("Expected ValueError for invalid port")
+
+    def test_configure_logging_does_not_add_file_handler_by_default(self):
+        logger = configure_logging({})
+
+        assert not any(handler.__class__.__name__ == "FileHandler" for handler in logger.handlers)
+
+    def test_main_runs_http_transport_with_explicit_settings(self):
+        with patch.object(server_module.mcp, "run") as mock_run:
+            server_module.main(
+                {
+                    "MCP_JUSTWATCH_TRANSPORT": "http",
+                    "MCP_JUSTWATCH_HOST": "127.0.0.1",
+                    "MCP_JUSTWATCH_PORT": "8123",
+                }
+            )
+
+        mock_run.assert_called_once_with(transport="http", host="127.0.0.1", port=8123)
 
 
 class TestGetDetails:
@@ -296,7 +351,7 @@ class TestGetDetails:
         )
 
         with patch("mcp_justwatch.server.justwatch.details", return_value=mock_entry):
-            result = get_details.fn(node_id="tm123", country="US")
+            result = get_details(node_id="tm123", country="US")
 
         assert "The Matrix" in result
         assert "tm123" in result
@@ -305,7 +360,7 @@ class TestGetDetails:
     def test_get_details_not_found(self):
         """Test details retrieval with no results."""
         with patch("mcp_justwatch.server.justwatch.details", return_value=None):
-            result = get_details.fn(node_id="tm999", country="US")
+            result = get_details(node_id="tm999", country="US")
 
         assert "No details found" in result
 
@@ -316,7 +371,7 @@ class TestGetDetails:
         with patch(
             "mcp_justwatch.server.justwatch.details", return_value=mock_entry
         ) as mock_details:
-            result = get_details.fn(node_id="tm123", country="FR", language="fr", best_only=False)
+            result = get_details(node_id="tm123", country="FR", language="fr", best_only=False)
 
         mock_details.assert_called_once_with(
             node_id="tm123", country="FR", language="fr", best_only=False
@@ -330,7 +385,7 @@ class TestGetDetails:
         with patch(
             "mcp_justwatch.server.justwatch.details", return_value=mock_entry
         ) as mock_details:
-            get_details.fn(node_id="tm123", country="gb", language="EN")
+            get_details(node_id="tm123", country="gb", language="EN")
 
         call_args = mock_details.call_args
         assert call_args.kwargs["country"] == "GB"
@@ -339,7 +394,7 @@ class TestGetDetails:
     def test_get_details_exception_handling(self):
         """Test exception handling in details."""
         with patch("mcp_justwatch.server.justwatch.details", side_effect=Exception("API Error")):
-            result = get_details.fn(node_id="tm123")
+            result = get_details(node_id="tm123")
 
         assert "Error" in result
         assert "API Error" in result
@@ -359,7 +414,7 @@ class TestGetOffersForCountries:
         }
 
         with patch("mcp_justwatch.server.justwatch.offers_for_countries", return_value=mock_offers):
-            result = get_offers_for_countries.fn(node_id="tm123", countries=["US", "GB"])
+            result = get_offers_for_countries(node_id="tm123", countries=["US", "GB"])
 
         assert "US:" in result
         assert "GB:" in result
@@ -369,7 +424,7 @@ class TestGetOffersForCountries:
     def test_get_offers_no_results(self):
         """Test offers retrieval with no results."""
         with patch("mcp_justwatch.server.justwatch.offers_for_countries", return_value={}):
-            result = get_offers_for_countries.fn(node_id="tm999", countries=["US"])
+            result = get_offers_for_countries(node_id="tm999", countries=["US"])
 
         assert "No offers found" in result
 
@@ -381,7 +436,7 @@ class TestGetOffersForCountries:
         }
 
         with patch("mcp_justwatch.server.justwatch.offers_for_countries", return_value=mock_offers):
-            result = get_offers_for_countries.fn(node_id="tm123", countries=["US", "XX"])
+            result = get_offers_for_countries(node_id="tm123", countries=["US", "XX"])
 
         assert "US:" in result
         assert "XX:" in result
@@ -394,7 +449,7 @@ class TestGetOffersForCountries:
         with patch(
             "mcp_justwatch.server.justwatch.offers_for_countries", return_value=mock_offers
         ) as mock_func:
-            get_offers_for_countries.fn(node_id="tm123", countries=["us", "gb"])
+            get_offers_for_countries(node_id="tm123", countries=["us", "gb"])
 
         # Check that countries were uppercased and converted to set
         call_args = mock_func.call_args
@@ -407,7 +462,7 @@ class TestGetOffersForCountries:
         with patch(
             "mcp_justwatch.server.justwatch.offers_for_countries", return_value=mock_offers
         ) as mock_func:
-            get_offers_for_countries.fn(
+            get_offers_for_countries(
                 node_id="tm123",
                 countries=["US"],
                 language="es",
@@ -433,7 +488,7 @@ class TestGetOffersForCountries:
         }
 
         with patch("mcp_justwatch.server.justwatch.offers_for_countries", return_value=mock_offers):
-            result = get_offers_for_countries.fn(node_id="tm123", countries=["US"])
+            result = get_offers_for_countries(node_id="tm123", countries=["US"])
 
         assert "Amazon" in result
         assert "RENT" in result
@@ -447,7 +502,7 @@ class TestGetOffersForCountries:
             "mcp_justwatch.server.justwatch.offers_for_countries",
             side_effect=Exception("API Error"),
         ):
-            result = get_offers_for_countries.fn(node_id="tm123", countries=["US"])
+            result = get_offers_for_countries(node_id="tm123", countries=["US"])
 
         assert "Error" in result
         assert "API Error" in result
