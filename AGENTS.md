@@ -9,6 +9,10 @@
 - Keep upstream-facing code changes focused on transport, runtime configuration, logging, and deployment readiness.
 - Place project planning and design material under `docs/plan/`, `docs/design/`, and `docs/adr/`.
 - Place agent-oriented operational guidance under `.agents/`.
+- Treat `ARCHITECT.md`, `PROGRESS.md`, `STREAMS.md`, `ROADMAP.md`, and `actions.jsonl` as the primary live project-status surface.
+- Read `ARCHITECT.md`, `PROGRESS.md`, and `STREAMS.md` before substantive work.
+- Update `PROGRESS.md` or `STREAMS.md` in the same commit as any material status change.
+- Append notable implementation, verification, and handoff events to `actions.jsonl`.
 
 ## Safe change rules
 - Do not remove existing MCP tools unless a replacement is documented and tested.
@@ -26,6 +30,8 @@
 - Update docs when behavior or deployment instructions change.
 - Record architecture-significant decisions in `docs/adr/`.
 - Keep docs short, explicit, and dated.
+- Keep root status files concise enough to fit alongside active code context.
+- Use `ROADMAP.md` for dependency-aware sequencing when work becomes blocked or multi-phase.
 
 ## Git hygiene
 - Use focused commits.
