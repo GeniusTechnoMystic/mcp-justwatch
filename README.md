@@ -1,6 +1,6 @@
 # MCP JustWatch Server
 
-A Model Context Protocol (MCP) server built to provide access to JustWatch streaming availability data. Search for movies and TV shows and find out where they're available to stream across different platforms and countries.
+A Model Context Protocol (MCP) server built to provide access to JustWatch streaming availability data. Search for movies and TV shows and find out where they are available to stream across different platforms and countries.
 
 ## Features
 
@@ -9,6 +9,8 @@ A Model Context Protocol (MCP) server built to provide access to JustWatch strea
 - **Multi-Country Support**: Query streaming availability across multiple countries simultaneously
 - **Detailed Information**: Access IMDb/TMDb scores, genres, runtime, release dates, and more
 - **Offer Details**: Get pricing, quality (HD/4K), and direct URLs to streaming platforms
+- **Remote HTTP Mode**: Run the server in FastMCP HTTP mode for reverse-proxied HTTPS deployment
+- **Health Check**: Expose `/health` for service managers and reverse proxies in HTTP mode
 
 ## Technology Stack
 
@@ -25,7 +27,7 @@ This server is built using:
 
 ### From Release
 
-Skip to "As an MCP Server" as a section to automatically download the package inside common MCP clients.
+Skip to the MCP host configuration section to automatically download the package inside supported MCP clients.
 
 ### From Source
 
@@ -49,11 +51,19 @@ pip install -e ".[dev]"
 
 ## Usage
 
-### As an MCP Server
+### Local stdio mode
 
-This server is designed to be used with MCP clients. Add it to your MCP client configuration:
+The default runtime mode is stdio, which is suitable for local MCP host integrations:
 
-#### Claude Desktop Configuration
+```bash
+python -m mcp_justwatch.server
+```
+
+### MCP host configuration
+
+This server is designed to be used with MCP clients. Add it to your MCP client configuration.
+
+#### Claude Desktop configuration
 
 Add to your `claude_desktop_config.json` to automatically download the package at the start of the session using `uvx`.
 
@@ -81,19 +91,72 @@ Or if installed in a virtual environment:
 }
 ```
 
-#### Other MCP Hosts
+#### Other MCP hosts
 
 See the `mcphost-config.yaml` example file for configuration with other MCP hosts.
 
-## Development
+## Remote HTTP mode
 
-### Running Tests
+This fork also supports FastMCP HTTP transport for secure reverse-proxied deployments.
+
+### Environment variables
+
+- `MCP_JUSTWATCH_TRANSPORT`: `stdio` or `http` (default: `stdio`)
+- `MCP_JUSTWATCH_HOST`: bind host for HTTP mode (default: `127.0.0.1`)
+- `MCP_JUSTWATCH_PORT`: bind port for HTTP mode (default: `8000`)
+- `MCP_JUSTWATCH_LOG_LEVEL`: logging level (default: `INFO`)
+- `MCP_JUSTWATCH_LOG_FILE`: optional log file path; leave unset for stream logging suitable for journald
+
+### Run in HTTP mode
 
 ```bash
-pytest
+env \
+  MCP_JUSTWATCH_TRANSPORT=http \
+  MCP_JUSTWATCH_HOST=127.0.0.1 \
+  MCP_JUSTWATCH_PORT=8000 \
+  python -m mcp_justwatch.server
 ```
 
-### Code Formatting
+### HTTP endpoints
+
+When running in HTTP mode:
+- MCP endpoint: `http://127.0.0.1:8000/mcp`
+- Health endpoint: `http://127.0.0.1:8000/health`
+
+The MCP endpoint is a protocol endpoint and is not meant to behave like a normal browser page.
+
+## Secure deployment guidance
+
+Recommended deployment shape for Perplexity remote connectors and similar remote MCP clients:
+- run the Python process on loopback only
+- reverse proxy through Nginx
+- terminate TLS at Nginx
+- expose only ports 80 and 443 publicly
+- optionally enforce API-key auth at the reverse proxy
+
+See:
+- `docs/design/2026-04-28-nixos-25.11-deployment.md`
+- `docs/design/2026-04-28-perplexity-connector-setup.md`
+- `docs/design/examples/nixos-25.11-configuration.nix`
+- `docs/design/examples/nginx-api-key-snippet.conf`
+
+## Perplexity remote connector target
+
+For Perplexity custom remote connectors, the intended target shape is:
+- public HTTPS URL
+- FastMCP HTTP transport behind reverse proxy
+- MCP endpoint published at `/mcp`
+- optional API-key auth at the proxy layer
+
+## Development
+
+### Running tests
+
+```bash
+pytest -q
+```
+
+### Code formatting
 
 Format code with Black:
 ```bash
@@ -107,7 +170,7 @@ ruff check src tests
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Contributions are welcome. Please feel free to submit a Pull Request.
 
 ## Disclaimer
 
