@@ -36,7 +36,10 @@
 
 ## Handoff
 - The branch is locally verified and currently focused on operational readiness rather than new runtime code.
-- The next operator should read `ARCHITECT.md`, `PROGRESS.md`, `STREAMS.md`, and `ROADMAP.md`, then decide between:
-  - opening a draft PR before deployment work, or
-  - proceeding directly to first-host deployment and connector validation
+- Work is paused intentionally here for token-budget control.
+- The next operator should read `ARCHITECT.md`, `PROGRESS.md`, `STREAMS.md`, and `ROADMAP.md`, then do the next highest-value task in this order:
+  - open a draft PR in the user fork
+  - proceed to first-host NixOS deployment
+  - validate the live Perplexity remote connector
+  - decide on Nix packaging and upstream contribution scope
 - If deployment work starts next, update `PROGRESS.md` and append deployment actions to `actions.jsonl` in the same commit as any related docs or code changes.

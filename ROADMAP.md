@@ -44,6 +44,7 @@ graph TD
 - Open or refine PRs based on what remains fork-specific
 
 ## Immediate next actions
-- Choose whether to open a draft PR before deployment work
+- Open a draft PR in the user fork to create a reviewable checkpoint
 - Prepare the first real NixOS host deployment
 - Capture deployment actions and outcomes in `actions.jsonl`
+- Validate the live endpoint as a Perplexity remote connector after deployment

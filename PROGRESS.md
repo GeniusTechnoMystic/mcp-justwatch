@@ -3,6 +3,12 @@
 ## Current milestone
 Remote HTTPS deployment-ready fork for Perplexity-compatible MCP hosting.
 
+## Session pause snapshot
+- Status: paused intentionally for token-budget control
+- Pause point: root-level living-state status protocol has been adopted and pushed
+- Latest branch commit: `7b9083d`
+- Resume priority: open draft PR or begin first live NixOS deployment
+
 ## Milestone checklist
 - [x] Fork upstream repo and create project branch `project/remote-http-nixos`
 - [x] Add project planning, design notes, and ADR scaffolding
